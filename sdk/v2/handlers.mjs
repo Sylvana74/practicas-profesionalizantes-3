@@ -66,3 +66,17 @@ export function default_handler(request, response, config) {
     response.writeHead(200, { 'Content-Type': 'text/html' });
     response.end(html);
 }
+// En handlers.mjs
+export async function delete_handler(request, response) {
+    if (request.method === 'POST') {
+        const input = await getBody(request); 
+        // Ahora 'input.id' traerá el nombre que escribas en el cuadrito
+        await user_delete(input.id);
+        
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ 
+            status: "success", 
+            message: `Usuario '${input.id}' eliminado correctamente` 
+        }));
+    }
+}

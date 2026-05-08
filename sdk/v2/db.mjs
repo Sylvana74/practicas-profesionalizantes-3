@@ -38,11 +38,12 @@ export async function user_has_access(userId, path) {
 }
 
 // BAJA: Eliminar un usuario
-export async function user_delete(id) {
-    const sql = "DELETE FROM user WHERE id = ?";
-    const stmt = db.prepare(sql);
-    return stmt.run(id);
+// En db.mjs
+export async function user_delete(username) {
+    const sql = "DELETE FROM user WHERE username = ?";
+    return await db.run(sql, [username]);
 }
+
 
 // MODIFICACIÓN: Actualizar contraseña
 export async function user_update(id, newPassword) {

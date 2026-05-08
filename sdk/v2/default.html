@@ -1,39 +1,112 @@
 <!DOCTYPE html>
 <html lang="es">
-	<head>
-		<meta charset="UTF-8">
-		<title>Login</title>
-	</head>
-	<body>
-		<h1>Registro de usuarios</h1>
-		<form action="/register" method="POST"> <label>Usuario:</label>
-    		<input name="username" required><br>
-    		<label>Password:</label>
-    		<input type="password" name="password" required><br>
-    		<button type="submit">Crear usuario</button>
-		</form>
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Gestión SDK v2</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; transition: 0.3s; }
+        button:hover { background: #0056b3; }
+        input { padding: 10px; margin-bottom: 10px; width: calc(100% - 22px); }
+        .console { background: #222; color: #0f0; padding: 15px; font-family: monospace; height: 100px; overflow-y: auto; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SDK v2: Sistema de Gestión</h1>
 
-		<button id="btnMsg">Mostrar mensaje en el servidor</button>
-	</body>
+        <div class="section">
+            <h3>Alta de Usuario</h3>
+            <input type="text" id="reg_user" placeholder="Usuario">
+            <input type="password" id="reg_pass" placeholder="Password">
+            <button onclick="ejecutarAccion('register')">Crear Usuario</button>
+        </div>
 
-	<script>
+        <div class="section">
+            <h3>Menú Principal: Usuarios y Permisos</h3>
+            <div class="grid">
+                <button onclick="ejecutarAccion('login')">Probar Login</button>
+                <button onclick="borrarUsuario()">Borrar Usuario</button>
 
-	function onBtnMsgOnClick()
-	{
-		console.log("Enviando petición al servidor...");
+<script>
+async function borrarUsuario() {
+    const nombre = prompt("Ingrese el NOMBRE de usuario a eliminar:");
+    if (!nombre) return;
 
-		fetch( "/showMessage");
-	}
+    log(`Intentando eliminar a: ${nombre}...`);
 
-	function main()
-	{
-		btnMsg.onclick = onBtnMsgOnClick;		
-	}
+    try {
+        const res = await fetch('/delete', {
+            method: 'POST',
+            body: new URLSearchParams({ id: nombre }) // Mandamos el nombre como 'id'
+        });
+        const data = await res.json();
+        log(data.message);
+    } catch (err) {
+        log("Error: No se pudo conectar con el servidor. ¿Está prendido?");
+    }
+}
+}
+</script>
+                <button onclick="fetch('/showMessage').then(r => r.text()).then(t => log(t))">Mensaje Servidor</button>
+                <button onclick="log('Consultando base de datos...')">Listar Usuarios</button>
+            </div>
+        </div>
 
-	window.onload = main;
+        <div class="console" id="log-output">Consola del sistema lista...</div>
+    </div>
 
-	</script>
+    <script>
+        function log(msg) {
+            const out = document.getElementById('log-output');
+            out.innerHTML += `<br>> ${msg}`;
+            out.scrollTop = out.scrollHeight;
+        }
+
+        async function ejecutarAccion(ruta) {
+            const user = document.getElementById('reg_user').value;
+            const pass = document.getElementById('reg_pass').value;
+
+            if (!user || !pass) return log("Error: Complete los campos");
+
+            try {
+                const res = await fetch(`/${ruta}`, {
+                    method: 'POST',
+                    body: new URLSearchParams({ username: user, password: pass })
+                });
+                const data = await res.json();
+                log(data.status === "success" ? `Éxito: ${data.message || 'Operación completada'}` : `Error: ${data.message}`);
+            } catch (err) {
+                log("Error de conexión con el servidor");
+            }
+        }
+		async function borrarUsuario() {
+            const id = prompt("Ingrese el NOMBRE del usuario a eliminar:");
+            if (!id) return; // Si cancela o deja vacío, no hace nada
+
+            log(`Intentando eliminar usuario ID: ${id}...`);
+
+            try {
+                const res = await fetch('/delete', {
+                    method: 'POST',
+                    body: new URLSearchParams({ id: id })
+                });
+                const data = await res.json();
+                
+                if (data.status === "success") {
+                    log(`Confirmado: ${data.message}`);
+                } else {
+                    log(`Error: ${data.message}`);
+                }
+            } catch (err) {
+                log("Error de conexión al intentar borrar");
+            }
+        }
+    </script>
+</body>
 </html>
-
-
 
