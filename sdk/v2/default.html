@@ -31,27 +31,6 @@
             <div class="grid">
                 <button onclick="ejecutarAccion('login')">Probar Login</button>
                 <button onclick="borrarUsuario()">Borrar Usuario</button>
-
-<script>
-async function borrarUsuario() {
-    const nombre = prompt("Ingrese el NOMBRE de usuario a eliminar:");
-    if (!nombre) return;
-
-    log(`Intentando eliminar a: ${nombre}...`);
-
-    try {
-        const res = await fetch('/delete', {
-            method: 'POST',
-            body: new URLSearchParams({ id: nombre }) // Mandamos el nombre como 'id'
-        });
-        const data = await res.json();
-        log(data.message);
-    } catch (err) {
-        log("Error: No se pudo conectar con el servidor. ¿Está prendido?");
-    }
-}
-}
-</script>
                 <button onclick="fetch('/showMessage').then(r => r.text()).then(t => log(t))">Mensaje Servidor</button>
                 <button onclick="log('Consultando base de datos...')">Listar Usuarios</button>
             </div>
@@ -68,8 +47,11 @@ async function borrarUsuario() {
         }
 
         async function ejecutarAccion(ruta) {
-            const user = document.getElementById('reg_user').value;
-            const pass = document.getElementById('reg_pass').value;
+            const userInput = document.getElementById('reg_user');
+            const passInput = document.getElementById('reg_pass');
+
+            const user = userInput.value;
+            const pass = passInput.value;
 
             if (!user || !pass) return log("Error: Complete los campos");
 
@@ -79,16 +61,28 @@ async function borrarUsuario() {
                     body: new URLSearchParams({ username: user, password: pass })
                 });
                 const data = await res.json();
-                log(data.status === "success" ? `Éxito: ${data.message || 'Operación completada'}` : `Error: ${data.message}`);
+                
+                if (data.status === "success") {
+                    log(`Éxito: ${data.message || 'Operación completada'}`);
+                    
+                    // SOLUCIÓN: Si la ruta era register, limpiamos las cajitas de texto
+                    if (ruta === 'register') {
+                        userInput.value = '';
+                        passInput.value = '';
+                    }
+                } else {
+                    log(`Error: ${data.message}`);
+                }
             } catch (err) {
                 log("Error de conexión con el servidor");
             }
         }
-		async function borrarUsuario() {
-            const id = prompt("Ingrese el NOMBRE del usuario a eliminar:");
-            if (!id) return; // Si cancela o deja vacío, no hace nada
 
-            log(`Intentando eliminar usuario ID: ${id}...`);
+        async function borrarUsuario() {
+            const id = prompt("Ingrese el NOMBRE del usuario a eliminar:");
+            if (!id) return; 
+
+            log(`Intentando eliminar usuario: ${id}...`);
 
             try {
                 const res = await fetch('/delete', {
@@ -109,4 +103,3 @@ async function borrarUsuario() {
     </script>
 </body>
 </html>
-

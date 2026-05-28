@@ -1,41 +1,55 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { db } from './db.mjs'; 
 import * as handlers from './handlers.mjs';
 
 // 1. Cargamos la configuración
-function load_config() {
+function loadConfig() {
     return JSON.parse(readFileSync('./config.json', 'utf-8'));
 }
-const config = load_config();
+const config = loadConfig();
 
-// 2. CREAMOS EL ROUTER (Esto DEBE ir aquí, antes de los .set)
+// 2. CREAMOS EL ROUTER
 const router = new Map();
 
-// 3. CONFIGURAMOS LAS RUTAS (Ahora sí podés usar router.set)
-router.set('/', handlers.default_handler);
-router.set('/register', handlers.register_handler);
-router.set('/login', handlers.login_handler);
-router.set('/showMessage', handlers.show_message_handler);
-router.set('/delete', handlers.delete_handler); // <--- Esta es la línea nueva
+// 3. CONFIGURAMOS LAS RUTAS (Con los nuevos nombres en camelCase)
+router.set('/', handlers.defaultHandler);
+router.set('/register', handlers.registerHandler);
+router.set('/login', handlers.loginHandler);
+router.set('/showMessage', handlers.showMessageHandler);
+router.set('/delete', handlers.deleteHandler);
+
+//Rutas para grupos
+router.set('/group/create', handlers.groupCreateHandler);
+router.set('/group/delete', handlers.groupDeleteHandler);
+router.set('/group/update', handlers.groupUpdateHandler);
+
+//Rutas para miembros
+router.set('/member/create', handlers.memberCreateHandler);
+router.set('/member/delete', handlers.memberDeleteHandler);
+
+//Rutas para endpoints
+router.set('/endpoint/create', handlers.endpointCreateHandler);
+router.set('/endpoint/delete', handlers.endpointDeleteHandler);
+router.set('/endpoint/update', handlers.endpointUpdateHandler);
 
 // 4. EL DESPACHADOR
-async function request_dispatcher(request, response) {
+async function requestDispatcher(request, response) {
     const url = new URL(request.url, `http://${config.server.ip}`);
     const handler = router.get(url.pathname);
 
     if (handler) {
-        await handler(request, response, config);
+        // SOLUCIONADO: Ahora solo pasamos request y response como pide el docente
+        await handler(request, response);
     } else {
-        response.writeHead(404);
+        response.writeHead(404, { 'Content-Type': 'text/plain' });
         response.end('Not Found');
     }
 }
 
 // 5. ENCENDEMOS EL SERVIDOR
-const server = createServer(request_dispatcher);
+const server = createServer(requestDispatcher);
 server.listen(config.server.port, config.server.ip, () => {
     console.log("--------------------------------------------------");
-    console.log(`Servidor v2 en http://${config.server.ip}:${config.server.port}`);
+    console.log(`Servidor v2 listo en http://${config.server.ip}:${config.server.port}`);
     console.log("--------------------------------------------------");
 });

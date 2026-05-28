@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { user_create, user_login } from './db.mjs'; 
+// Cambiamos las importaciones al nuevo archivo 'model.mjs' y a camelCase
+import { userCreate, userLogin, userDelete } from './model.mjs'; 
+
+// Cargamos de forma global el config para no pasarlo por parámetro
+const config = JSON.parse(readFileSync('./config.json', 'utf-8'));
 
 // Función auxiliar para leer datos del POST
 function getBody(request) {
@@ -13,13 +17,19 @@ function getBody(request) {
     });
 }
 
+// Handler por defecto - AHORA SOLO RECIBE 2 PARÁMETROS
+export function defaultHandler(request, response) {
+    const html = readFileSync(config.server.default_path, 'utf-8');
+    response.writeHead(200, { 'Content-Type': 'text/html' });
+    response.end(html);
+}
+
 // Handler para el registro (Alta)
-export async function register_handler(request, response) {
+export async function registerHandler(request, response) {
     if (request.method === 'POST') {
         try {
             const input = await getBody(request); 
-            // Usamos user_create para ser consistentes con la v2
-            const result = await user_create(input.username, input.password);
+            const result = await userCreate(input.username, input.password);
             response.writeHead(200, { 'Content-Type': 'application/json' });
             response.end(JSON.stringify({ status: "success", data: result }));
         } catch (err) {
@@ -32,20 +42,19 @@ export async function register_handler(request, response) {
     }
 }
 
-// Handler para mostrar mensaje (El que faltaba para el botón)
-export function show_message_handler(request, response) {
+// Handler para mostrar mensaje
+export function showMessageHandler(request, response) {
     console.log("¡Botón presionado! El servidor recibió la señal correctamente.");
     response.writeHead(200, { 'Content-Type': 'text/plain' });
     response.end("Mensaje impreso en la terminal del servidor");
 }
 
-// NUEVO: Handler para Login (Autenticación v2)
-export async function login_handler(request, response) {
+// Handler para Login (Autenticación v2)
+export async function loginHandler(request, response) {
     if (request.method === 'POST') {
         try {
             const input = await getBody(request);
-            // Esta función la definiremos en db.mjs para validar credenciales
-            const user = await user_login(input.username, input.password);
+            const user = await userLogin(input.username, input.password);
             
             if (user) {
                 response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -58,25 +67,145 @@ export async function login_handler(request, response) {
             response.writeHead(500);
             response.end(JSON.stringify({ error: err.message }));
         }
+    } else {
+        response.writeHead(405);
+        response.end("Debe usar POST");
     }
 }
 
-export function default_handler(request, response, config) {
-    const html = readFileSync(config.server.default_path, 'utf-8');
-    response.writeHead(200, { 'Content-Type': 'text/html' });
-    response.end(html);
-}
-// En handlers.mjs
-export async function delete_handler(request, response) {
+// Handler para la Baja de usuarios
+export async function deleteHandler(request, response) {
     if (request.method === 'POST') {
-        const input = await getBody(request); 
-        // Ahora 'input.id' traerá el nombre que escribas en el cuadrito
-        await user_delete(input.id);
-        
-        response.writeHead(200, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ 
-            status: "success", 
-            message: `Usuario '${input.id}' eliminado correctamente` 
-        }));
+        try {
+            const input = await getBody(request); 
+            await userDelete(input.id);
+            
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ 
+                status: "success", 
+                message: `Usuario '${input.id}' eliminado correctamente` 
+                }));
+        } catch (err) {
+            response.writeHead(500);
+            response.end(JSON.stringify({ error: err.message }));
+        }
+    } else {
+        response.writeHead(405);
+        response.end("Debe usar POST");
     }
+}
+// Primero, acordate de actualizar tu import inicial en handlers.mjs para incluir lo nuevo:
+// import { userCreate, userLogin, userDelete, groupCreate, groupDelete, groupUpdate, memberCreate, memberDelete, endpointCreate, endpointDelete, endpointUpdate } from './model.mjs';
+
+// ==========================================
+// HANDLERS PARA GRUPOS
+// ==========================================
+export async function groupCreateHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            const result = groupCreate(input.name, input.description);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: "Grupo creado", data: result }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+export async function groupDeleteHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            groupDelete(input.id);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: `Grupo con ID ${input.id} eliminado` }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+export async function groupUpdateHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            groupUpdate(input.id, input.name, input.description);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: "Grupo actualizado con éxito" }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+// ==========================================
+// HANDLERS PARA MIEMBROS
+// ==========================================
+export async function memberCreateHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            memberCreate(input.idGroup, input.idUser);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: "Usuario asignado al grupo correctamente" }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+export async function memberDeleteHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            memberDelete(input.idGroup, input.idUser);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: "Usuario removido del grupo correctamente" }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+// ==========================================
+// HANDLERS PARA ENDPOINTS
+// ==========================================
+export async function endpointCreateHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            const result = endpointCreate(input.path, input.method);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: "Endpoint registrado", data: result }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+export async function endpointDeleteHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            endpointDelete(input.id);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: `Endpoint con ID ${input.id} eliminado` }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+
+export async function endpointUpdateHandler(request, response) {
+    if (request.method === 'POST') {
+        try {
+            const input = await getBody(request);
+            endpointUpdate(input.id, input.path, input.method);
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: "success", message: "Endpoint modificado correctamente" }));
+        } catch (err) {
+            response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
+        }
+    } else { response.writeHead(405); response.end("Debe usar POST"); }
 }
