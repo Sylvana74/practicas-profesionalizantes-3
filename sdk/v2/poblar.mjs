@@ -5,7 +5,7 @@ function poblarBaseDeDatos() {
 
     try {
         // =================================================================
-        // 1. CREACIÓN DE TABLAS (Por si no existen en tu db.sqlite3)
+        // 1. CREACIÓN DE TABLAS 
         // =================================================================
         
         // Tabla de Usuarios
@@ -17,7 +17,7 @@ function poblarBaseDeDatos() {
             )
         `).run();
 
-        // Tabla de Grupos (La que te tiraba error)
+        // Tabla de Grupos 
         db.prepare(`
             CREATE TABLE IF NOT EXISTS groups (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,14 +59,14 @@ function poblarBaseDeDatos() {
 
         console.log("✔ Estructura de tablas verificada/creada.");
 // =================================================================
-        // 2. LIMPIEZA DE REGISTROS (Modificado para forzar la columna nueva)
+        // 2. LIMPIEZA DE REGISTROS 
         // =================================================================
         // Borramos las tablas de permisos por completo para forzar su recreación limpia
         db.prepare("DROP TABLE IF EXISTS access").run();
         db.prepare("DROP TABLE IF EXISTS members").run();
         db.prepare("DROP TABLE IF EXISTS endpoint").run();
         
-        // Ahora sí, volvemos a ejecutar la creación específica de esas tablas fijuradas
+        
         db.prepare(`
             CREATE TABLE IF NOT EXISTS endpoint (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,14 +95,14 @@ function poblarBaseDeDatos() {
             )
         `).run();
 
-        // Limpiamos los registros de las tablas base que no borramos completamente
+        
         db.prepare("DELETE FROM groups").run();
         db.prepare("DELETE FROM user").run();
         db.prepare("DELETE FROM sqlite_sequence").run(); 
 
         console.log("✔ Estructura vieja eliminada y tablas limpiadas correctamente.");
         // =================================================================
-        // 2. LIMPIEZA DE REGISTROS (Para evitar duplicados si volvés a correr el script)
+        // 2. LIMPIEZA DE REGISTROS (Para evitar duplicados)
         // =================================================================
         db.prepare("DELETE FROM access").run();
         db.prepare("DELETE FROM members").run();

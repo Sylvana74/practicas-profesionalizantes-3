@@ -32,7 +32,7 @@
                 <button onclick="ejecutarAccion('login')">Probar Login</button>
                 <button onclick="borrarUsuario()">Borrar Usuario</button>
                 <button onclick="fetch('/showMessage').then(r => r.text()).then(t => log(t))">Mensaje Servidor</button>
-                <button onclick="log('Consultando base de datos...')">Listar Usuarios</button>
+                <button onclick="obtenerUsuarios()">Listar Usuarios</button>
             </div>
         </div>
 
@@ -40,12 +40,14 @@
     </div>
 
     <script>
+        // Función auxiliar para imprimir en nuestra consola verde
         function log(msg) {
             const out = document.getElementById('log-output');
             out.innerHTML += `<br>> ${msg}`;
             out.scrollTop = out.scrollHeight;
         }
 
+        // Manejador para Crear Usuario y Probar Login
         async function ejecutarAccion(ruta) {
             const userInput = document.getElementById('reg_user');
             const passInput = document.getElementById('reg_pass');
@@ -65,7 +67,7 @@
                 if (data.status === "success") {
                     log(`Éxito: ${data.message || 'Operación completada'}`);
                     
-                    // SOLUCIÓN: Si la ruta era register, limpiamos las cajitas de texto
+                    // Si creamos un usuario con éxito, limpiamos los campos de texto
                     if (ruta === 'register') {
                         userInput.value = '';
                         passInput.value = '';
@@ -78,6 +80,7 @@
             }
         }
 
+        // Función para eliminar un usuario por su nombre
         async function borrarUsuario() {
             const id = prompt("Ingrese el NOMBRE del usuario a eliminar:");
             if (!id) return; 
@@ -98,6 +101,31 @@
                 }
             } catch (err) {
                 log("Error de conexión al intentar borrar");
+            }
+        }
+
+        // NUEVA: Función para consultar y listar los usuarios de la base de datos
+        async function obtenerUsuarios() {
+            log('Consultando base de datos...');
+            try {
+                const res = await fetch('/list');
+                const data = await res.json();
+                
+                if (data.status === "success") {
+                    if (data.data.length === 0) {
+                        log('La base de datos está vacía.');
+                    } else {
+                        log('--- LISTA DE USUARIOS ---');
+                        data.data.forEach(u => {
+                            log(`• ${u.username}`);
+                        });
+                        log('-------------------------');
+                    }
+                } else {
+                    log(`Error: ${data.message}`);
+                }
+            } catch (err) {
+                log("Error de conexión al listar usuarios");
             }
         }
     </script>

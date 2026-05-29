@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
-// Cambiamos las importaciones al nuevo archivo 'model.mjs' y a camelCase
+
 import { userCreate, userLogin, userDelete } from './model.mjs'; 
 
-// Cargamos de forma global el config para no pasarlo por parámetro
+
 const config = JSON.parse(readFileSync('./config.json', 'utf-8'));
+
 
 // Función auxiliar para leer datos del POST
 function getBody(request) {
@@ -17,14 +18,14 @@ function getBody(request) {
     });
 }
 
-// Handler por defecto - AHORA SOLO RECIBE 2 PARÁMETROS
+
 export function defaultHandler(request, response) {
     const html = readFileSync(config.server.default_path, 'utf-8');
     response.writeHead(200, { 'Content-Type': 'text/html' });
     response.end(html);
 }
 
-// Handler para el registro (Alta)
+
 export async function registerHandler(request, response) {
     if (request.method === 'POST') {
         try {
@@ -42,14 +43,14 @@ export async function registerHandler(request, response) {
     }
 }
 
-// Handler para mostrar mensaje
+
 export function showMessageHandler(request, response) {
     console.log("¡Botón presionado! El servidor recibió la señal correctamente.");
     response.writeHead(200, { 'Content-Type': 'text/plain' });
     response.end("Mensaje impreso en la terminal del servidor");
 }
 
-// Handler para Login (Autenticación v2)
+
 export async function loginHandler(request, response) {
     if (request.method === 'POST') {
         try {
@@ -73,7 +74,7 @@ export async function loginHandler(request, response) {
     }
 }
 
-// Handler para la Baja de usuarios
+
 export async function deleteHandler(request, response) {
     if (request.method === 'POST') {
         try {
@@ -94,8 +95,7 @@ export async function deleteHandler(request, response) {
         response.end("Debe usar POST");
     }
 }
-// Primero, acordate de actualizar tu import inicial en handlers.mjs para incluir lo nuevo:
-// import { userCreate, userLogin, userDelete, groupCreate, groupDelete, groupUpdate, memberCreate, memberDelete, endpointCreate, endpointDelete, endpointUpdate } from './model.mjs';
+
 
 // ==========================================
 // HANDLERS PARA GRUPOS
@@ -208,4 +208,14 @@ export async function endpointUpdateHandler(request, response) {
             response.writeHead(500); response.end(JSON.stringify({ error: err.message }));
         }
     } else { response.writeHead(405); response.end("Debe usar POST"); }
+}
+export function listarUsuariosHandler(request, response) {
+    try {
+        const usuarios = dbObtenerUsuarios();
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ status: "success", data: usuarios }));
+    } catch (err) {
+        response.writeHead(500, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ status: "error", message: err.message }));
+    }
 }

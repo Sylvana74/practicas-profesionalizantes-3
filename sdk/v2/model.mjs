@@ -1,34 +1,34 @@
 import { db } from './db.mjs';
 
-// ALTA: Crear un nuevo usuario
+
 export function userCreate(username, password) {
     const sql = "INSERT INTO user (username, password) VALUES (?, ?)";
     const stmt = db.prepare(sql);
     return stmt.run(username, password);
 }
 
-// LOGIN: Validar credenciales
+
 export function userLogin(username, password) {
     const sql = "SELECT id, username FROM user WHERE username = ? AND password = ?";
     const stmt = db.prepare(sql);
     return stmt.get(username, password);
 }
 
-// BAJA: Eliminar un usuario
+
 export function userDelete(username) {
     const sql = "DELETE FROM user WHERE username = ?";
     const stmt = db.prepare(sql);
     return stmt.run(username);
 }
 
-// MODIFICACIÓN: Actualizar contraseña
+
 export function userUpdate(id, newPassword) {
     const sql = "UPDATE user SET password = ? WHERE id = ?";
     const stmt = db.prepare(sql);
     return stmt.run(newPassword, id);
 }
 
-// GESTIÓN DE PERMISOS: Verificar si el usuario tiene acceso a una ruta
+
 export function userHasAccess(userId, path) {
     const sql = `
         SELECT 1 FROM access a
@@ -65,7 +65,7 @@ export function groupUpdate(id, newName, newDescription) {
     return stmt.run(newName, newDescription, id);
 }
 
-// Listar Grupos (Auxiliar útil para pruebas)
+// Listar Grupos 
 export function groupList() {
     const sql = "SELECT * FROM groups";
     const stmt = db.prepare(sql);
@@ -89,10 +89,6 @@ export function memberDelete(idGroup, idUser) {
     const stmt = db.prepare(sql);
     return stmt.run(idGroup, idUser);
 }
-
-// Nota: En una tabla intermedia de miembros (muchos a muchos), la "Modificación" 
-// suele ser borrar y volver a crear, o cambiar el rol si existiera esa columna. 
-// Con Alta y Baja cubrimos perfectamente el ABM solicitado.
 
 
 // ==========================================
@@ -118,4 +114,14 @@ export function endpointUpdate(id, newPath, newMethod) {
     const sql = "UPDATE endpoint SET path = ?, method = ? WHERE id = ?";
     const stmt = db.prepare(sql);
     return stmt.run(newPath, newMethod, id);
+}
+
+export function dbObtenerUsuarios() {
+    const sql = "SELECT username FROM user ORDER BY id ASC";
+    try {
+        const stmt = db.prepare(sql);
+        return stmt.all(); // Trae todas las filas
+    } catch (err) {
+        throw new Error("Error al listar usuarios: " + err.message);
+    }
 }
