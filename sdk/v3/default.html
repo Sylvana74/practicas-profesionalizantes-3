@@ -1,99 +1,40 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Control de Acceso y Sesiones</title>
-    <style>
-        body { font-family: sans-serif; margin: 30px; }
-        .section { margin-bottom: 25px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; max-width: 400px; }
-        button { margin: 5px 2px; padding: 8px 12px; cursor: pointer; }
-        #console { background: #222; color: #0f0; padding: 15px; font-family: monospace; min-height: 100px; border-radius: 5px; max-width: 600px; overflow-x: auto; }
-    </style>
-</head>
-<body>
+	<head>
+		<meta charset="UTF-8">
+		<title>Login</title>
+	</head>
+	<body>
+		<h1>Registro de usuarios</h1>
+		<form action="/register" method="get">
+			<label>Usuario:</label>
+			<input name="username" required><br>
+			<label>Password:</label>
+			<input type="password" name="password" required><br>
+			<button type="submit">Crear usuario</button>
+		</form>
 
-    <h1>Prueba de Autenticación y Autorización</h1>
+		<button id="btnMsg">Mostrar mensaje en el servidor</button>
+	</body>
 
-    <div class="section">
-        <h3>1. Registro de Usuarios</h3>
-        <form action="/register" method="get" id="regForm">
-            <label>Usuario:</label> <input name="username" id="regUser" required><br><br>
-            <label>Password:</label> <input type="password" name="password" id="regPass" required><br><br>
-            <button type="submit">Crear usuario en DB</button>
-        </form>
-    </div>
+	<script>
 
-    <div class="section">
-        <h3>2. Simular Login (Guardar Sesión)</h3>
-        <label>Usuario:</label> <input id="loginUser" value="admin"><br><br>
-        <label>Password:</label> <input type="password" id="loginPass" value="1234"><br><br>
-        <button id="btnLogin">Iniciar Sesión</button>
-    </div>
+	function onBtnMsgOnClick()
+	{
+		console.log("Enviando petición al servidor...");
 
-    <div class="section">
-        <h3>3. Componente Autorizador (Endpoints)</h3>
-        <p><em>Prueba con el usuario 'admin' de la DB (vinculado al grupo con acceso a /print, /log, /help).</em></p>
-        <button id="btnLog">Ejecutar /log (Permitido)</button>
-        <button id="btnHello">Ejecutar /sayHello (Denegado)</button>
-    </div>
+		fetch( "/showMessage");
+	}
 
-    <h3>Salida del Servidor:</h3>
-    <div id="console">Log listo...</div>
+	function main()
+	{
+		btnMsg.onclick = onBtnMsgOnClick;		
+	}
 
-    <script>
-        let currentUser = ""; // Mantendremos el usuario en el estado de la app cliente
+	window.onload = main;
 
-        const logConsole = (text, isError = false) => {
-            const con = document.getElementById('console');
-            con.innerHTML += `<br><span style="color: ${isError ? '#ff6b6b' : '#0f0'}">${text}</span>`;
-        };
-
-        // Evento Login (POST)
-        document.getElementById('btnLogin').onclick = async () => {
-            const username = document.getElementById('loginUser').value;
-            const password = document.getElementById('loginPass').value;
-
-            try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    currentUser = username; // Guardamos el usuario autenticado
-                    logConsole(`🟢 Sesión iniciada para: ${data.session.username} (Estado: ${data.session.status})`);
-                } else {
-                    logConsole(`🔴 Error en login: ${data.error}`, true);
-                }
-            } catch (err) {
-                logConsole(`🔴 Error de red`, true);
-            }
-        };
-
-        // Función auxiliar para consumir endpoints enviando la identidad en los Headers
-        const requestEndpoint = async (path) => {
-            logConsole(`Enviando petición a ${path}...`);
-            try {
-                const res = await fetch(path, {
-                    method: 'GET',
-                    headers: { 'x-current-user': currentUser } // Simulamos el token/sesión pasándolo por header
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    logConsole(`✅ [${res.status}] ${data.message}`);
-                } else {
-                    logConsole(`❌ [${res.status}] ${data.error}`, true);
-                }
-            } catch (err) {
-                logConsole(`🔴 Error de conexión`, true);
-            }
-        };
-
-        // Bindeo de los botones solicitados
-        document.getElementById('btnLog').onclick = () => requestEndpoint('/log');
-        document.getElementById('btnHello').onclick = () => requestEndpoint('/sayHello');
-    </script>
-</body>
+	</script>
 </html>
+
+
+
