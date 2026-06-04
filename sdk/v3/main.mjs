@@ -3,6 +3,12 @@ import { URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
+import crypto from 'node:crypto'; // Importamos el módulo nativo
+
+// Solución al error de #translate: Vinculamos crypto al ámbito global para que crypto.subtle funcione en ESM
+if (!globalThis.crypto) {
+    globalThis.crypto = crypto;
+}
 
 function default_config() 
 {
@@ -12,11 +18,11 @@ function default_config()
         {
             ip: '127.0.0.1',
             port: 3000,
-            default_path: './index.html'
+            default_path: './default.html'
         },
         database: 
         {
-            path: './database.db'
+            path: './db.sqlite3'
         }
     };
 
@@ -56,8 +62,44 @@ function connect_db(path)
     }
 }
 
+// Inicialización de la base de datos
+const db = connect_db(config.database.path);
 
-let userSessions = new Map();  //clave-valor  -> clave: id_user,  valor: sessionObj
+// =================================================================
+// 1. ABSTRACCIÓN DE ENDPOINTS EXCEPCUADOS (Feedback Luzuriaga)
+// =================================================================
+const PUBLIC_ENDPOINTS = new Set([
+    '/',
+    '/login',
+    '/register',
+    '/favicon.ico'
+]);
+
+function isPublicEndpoint(endpointPath) {
+    if (!endpointPath) return false;
+    const normalizedPath = endpointPath.replace(/\/$/, ''); 
+    return normalizedPath === '' ? PUBLIC_ENDPOINTS.has('/') : PUBLIC_ENDPOINTS.has(normalizedPath);
+}
+
+// =================================================================
+// 2. FUNCIONES HASH CRIPTOGRÁFICAS (Código del PDF, Pág 5)
+// =================================================================
+async function calcularHashSHA256(cadena) {
+    const encoder = new TextEncoder(); // [cite: 137]
+    const data = encoder.encode(cadena); // [cite: 138]
+    
+    // Ahora crypto.subtle está seguro en el contexto global globalThis
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data); // [cite: 143]
+    const hashArray = Array.from(new Uint8Array(hashBuffer)); // [cite: 144]
+    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join(''); // [cite: 145]
+    
+    return hashHex; // [cite: 142]
+}
+
+// =================================================================
+// GESTIÓN DE SESIONES Y AUTORIZACIÓN
+// =================================================================
+let userSessions = new Map();  
 
 class UserSession
 {
@@ -65,22 +107,17 @@ class UserSession
     {
        this.status = 'disabled';
     }
-
 }
 
-
-function authenticate( username, password )
+async function authenticate( username, password )
 {
-    //Debería ir a la base de datos y buscar si existe (1) registro  username/password coincidente
-    //Si es verdadero entonces significa que estoy autenticado, sino no.
-
+    const passwordHash = await calcularHashSHA256(password);
     const sql = "SELECT count(*) as total FROM `user` WHERE username=? AND password=?";
 
     try 
     {
         const stmt = db.prepare(sql);
-        const row = stmt.get(username, password);
-            
+        const row = stmt.get(username, passwordHash);
         return (row.total === 1);
     } 
     catch (err) 
@@ -89,9 +126,12 @@ function authenticate( username, password )
     }
 }
 
-
 function authorize( username, endpointPath )
 {
+    if (isPublicEndpoint(endpointPath)) {
+        return true;
+    }
+
     const sql = `
         SELECT count(*) as total
         FROM access a
@@ -104,10 +144,7 @@ function authorize( username, endpointPath )
 
     try {
         const stmt = db.prepare(sql);
-        
         const row = stmt.get(username, endpointPath);
-
-        // Si el conteo es mayor a 0, tiene permiso
         return row.total > 0;
     } catch (err) {
         console.error("Error consultando permisos:", err);
@@ -115,51 +152,83 @@ function authorize( username, endpointPath )
     }
 }
 
-function login( username, password )
+async function login( username, password )
 {
-    
-    let isAuthenticated = authenticate(username, password);
+    let isAuthenticated = await authenticate(username, password);
 
     if ( isAuthenticated )
     {
-        let havePreviousSession = userSessions.get(username);
+        let previousSession = userSessions.get(username);
 
-        if ( havePreviousSession != null )
+        if ( previousSession == null )
         {
-            //Significa que está ingresando por primera vez. Entonces, creo y persisto el objeto de sesión
             let newSession = new UserSession();
             newSession.status = 'enabled';
-            userSessions.set(username, newSession );
+            userSessions.set(username, newSession);
             return newSession;
         }
         else
         {
-            //Significa que ya ingresó en algún momento y tiene ya un objeto de sesión creado y guardado en el mapa.
-            let previusSession = userSessions.get(username);
-
-            if ( previusSession.status == 'disabled')
+            if ( previousSession.status == 'disabled')
             {
-                previusSession.status = 'enabled';
+                previousSession.status = 'enabled';
             }
-    
-            return previusSession;
+            return previousSession;
         }
     }
     else
     {
         return null;
     }
-
-    //El retorno de esta función está representando si se devuelve o no un objeto de sesión.
 }
 
-function logout(username, password)
+async function logout(username, password)
 {
-    let isAuthenticated = authenticate(username, password);
+    let isAuthenticated = await authenticate(username, password);
 
     if ( isAuthenticated )
     {
         let currentSession = userSessions.get(username);
-        currentSession.status = 'disabled';
+        if (currentSession) {
+            currentSession.status = 'disabled';
+        }
     }
 }
+
+// =================================================================
+// 3. INICIALIZACIÓN DEL SERVIDOR HTTP
+// =================================================================
+const server = createServer(async (req, res) => {
+    const parsedUrl = new URL(req.url, `http://${config.server.ip}:${config.server.port}`);
+    const endpointPath = parsedUrl.pathname;
+
+    console.log(`Petición recibida: [${req.method}] ${endpointPath}`);
+
+    if (endpointPath === '/') {
+        try {
+            const html = readFileSync(config.server.default_path, 'utf-8');
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(html);
+            return;
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end("Error leyendo default.html");
+            return;
+        }
+    }
+
+    const usernameDummy = "testUser"; 
+    const isAuthorized = authorize(usernameDummy, endpointPath);
+
+    if (isAuthorized) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ message: `Acceso concedido a: ${endpointPath}` }));
+    } else {
+        res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: `Acceso denegado a: ${endpointPath}` }));
+    }
+});
+
+server.listen(config.server.port, config.server.ip, () => {
+    console.log(`Servidor corriendo en http://${config.server.ip}:${config.server.port}`);
+});
