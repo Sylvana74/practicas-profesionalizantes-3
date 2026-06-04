@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Login - V4 Desacoplada</title>
+    </head>
+    <body>
+        <h1>Registro de usuarios</h1>
+        <form action="http://localhost:8081/register" method="get">
+            <label>Usuario:</label>
+            <input name="username" required><br>
+            <label>Password:</label>
+            <input type="password" name="password" required><br>
+            <button type="submit">Crear usuario</button>
+        </form>
+
+        <button id="btnMsg">Mostrar mensaje en el servidor</button>
+
+        <hr>
+        <h3>Pruebas de Autorización</h3>
+        <button id="btnLog">Ejecutar /log</button>
+        <button id="btnSayHello">Ejecutar /sayHello</button>
+    </body>
+
+    <script>
+   
+    const API_URL = 'http://localhost:8080';
+    
+    function onBtnMsgOnClick()
+    {
+        console.log("Enviando petición al servidor...");
+        fetch(`${API_URL}/showMessage`);
+    }
+
+    function onBtnLogOnClick() 
+    {
+        console.log("Invocando /log...");
+        fetch(`${API_URL}/log`)
+            .then(res => alert(`Status /log: ${res.status}`));
+    }
+
+    function onBtnSayHelloOnClick() 
+    {
+        console.log("Invocando /sayHello...");
+        fetch(`${API_URL}/sayHello`)
+            .then(res => alert(`Status /sayHello: ${res.status}`));
+    }
+
+    // Una única función main que vincula TODOS los botones de la pantalla
+    function main()
+    {
+        // Vinculación por ID (Uso de getElementById para asegurar compatibilidad)
+        document.getElementById('btnMsg').onclick = onBtnMsgOnClick;       
+        document.getElementById('btnLog').onclick = onBtnLogOnClick;
+        document.getElementById('btnSayHello').onclick = onBtnSayHelloOnClick;
+    }
+
+    // Al terminar de cargar la ventana, se ejecuta el main
+    window.onload = main;
+    </script>
+</html>

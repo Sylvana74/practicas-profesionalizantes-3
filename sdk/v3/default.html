@@ -15,26 +15,50 @@
 		</form>
 
 		<button id="btnMsg">Mostrar mensaje en el servidor</button>
+
+		<hr>
+		<h3>Pruebas de Autorización</h3>
+		<button id="btnLog">Ejecutar /log</button>
+		<button id="btnSayHello">Ejecutar /sayHello</button>
 	</body>
 
 	<script>
 
+	
 	function onBtnMsgOnClick()
 	{
 		console.log("Enviando petición al servidor...");
-
-		fetch( "/showMessage");
+		fetch("/showMessage");
 	}
 
+	
+	function onBtnLogOnClick() 
+	{
+		console.log("Invocando /log...");
+		fetch("/log")
+			.then(res => alert(`Status /log: ${res.status}`));
+	}
+
+	function onBtnSayHelloOnClick() 
+	{
+		console.log("Invocando /sayHello...");
+		fetch("/sayHello")
+			.then(res => alert(`Status /sayHello: ${res.status}`));
+	}
+
+	// 3. Una única función main que vincula TODOS los botones de la pantalla
 	function main()
 	{
-		btnMsg.onclick = onBtnMsgOnClick;		
+		// Vinculación original por ID directo
+		btnMsg.onclick = onBtnMsgOnClick;       
+		
+		// Vinculaciones de los nuevos botones
+		document.getElementById('btnLog').onclick = onBtnLogOnClick;
+		document.getElementById('btnSayHello').onclick = onBtnSayHelloOnClick;
 	}
 
+	// Al terminar de cargar la ventana, se ejecuta el main
 	window.onload = main;
-
+	
 	</script>
 </html>
-
-
-
