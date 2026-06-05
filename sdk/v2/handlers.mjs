@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs';
 
-import { userCreate, userLogin, userDelete } from './model.mjs'; 
-
+import { 
+    userCreate, userLogin, userDelete, dbObtenerUsuarios,
+    groupCreate, groupDelete, groupUpdate,
+    memberCreate, memberDelete,
+    endpointCreate, endpointDelete, endpointUpdate 
+} from './model.mjs'; 
 
 const config = JSON.parse(readFileSync('./config.json', 'utf-8'));
 
-
-// Función auxiliar para leer datos del POST
 function getBody(request) {
     return new Promise((resolve) => {
         let body = '';
@@ -18,13 +20,11 @@ function getBody(request) {
     });
 }
 
-
 export function defaultHandler(request, response) {
     const html = readFileSync(config.server.default_path, 'utf-8');
     response.writeHead(200, { 'Content-Type': 'text/html' });
     response.end(html);
 }
-
 
 export async function registerHandler(request, response) {
     if (request.method === 'POST') {
@@ -43,13 +43,11 @@ export async function registerHandler(request, response) {
     }
 }
 
-
 export function showMessageHandler(request, response) {
     console.log("¡Botón presionado! El servidor recibió la señal correctamente.");
     response.writeHead(200, { 'Content-Type': 'text/plain' });
     response.end("Mensaje impreso en la terminal del servidor");
 }
-
 
 export async function loginHandler(request, response) {
     if (request.method === 'POST') {
@@ -74,18 +72,16 @@ export async function loginHandler(request, response) {
     }
 }
 
-
 export async function deleteHandler(request, response) {
     if (request.method === 'POST') {
         try {
             const input = await getBody(request); 
             await userDelete(input.id);
-            
             response.writeHead(200, { 'Content-Type': 'application/json' });
             response.end(JSON.stringify({ 
                 status: "success", 
                 message: `Usuario '${input.id}' eliminado correctamente` 
-                }));
+            }));
         } catch (err) {
             response.writeHead(500);
             response.end(JSON.stringify({ error: err.message }));
@@ -95,7 +91,6 @@ export async function deleteHandler(request, response) {
         response.end("Debe usar POST");
     }
 }
-
 
 // ==========================================
 // HANDLERS PARA GRUPOS
@@ -209,6 +204,7 @@ export async function endpointUpdateHandler(request, response) {
         }
     } else { response.writeHead(405); response.end("Debe usar POST"); }
 }
+
 export function listarUsuariosHandler(request, response) {
     try {
         const usuarios = dbObtenerUsuarios();
