@@ -19,7 +19,6 @@ function default_config()
             path: './database.db'
         }
     };
-
     return config;
 }
 
@@ -73,7 +72,6 @@ function authenticate( username, password )
     {
         const stmt = db.prepare(sql);
         const row = stmt.get(username, password);
-            
         return (row.total === 1);
     } 
     catch (err) 
@@ -93,7 +91,6 @@ function authorize( username, endpointPath )
         WHERE u.username = ? 
         AND e.path = ?
     `;
-
     try {
         const stmt = db.prepare(sql);
         const row = stmt.get(username, endpointPath);
@@ -107,11 +104,9 @@ function authorize( username, endpointPath )
 function login( username, password )
 {
     let isAuthenticated = authenticate(username, password);
-
     if ( isAuthenticated )
     {
         let havePreviousSession = userSessions.get(username);
-
         if ( havePreviousSession != null )
         {
             let newSession = new UserSession();
@@ -122,12 +117,10 @@ function login( username, password )
         else
         {
             let previusSession = userSessions.get(username);
-
             if ( previusSession.status == 'disabled')
             {
                 previusSession.status = 'enabled';
             }
-    
             return previusSession;
         }
     }
@@ -140,7 +133,6 @@ function login( username, password )
 function logout(username, password)
 {
     let isAuthenticated = authenticate(username, password);
-
     if ( isAuthenticated )
     {
         let currentSession = userSessions.get(username);
@@ -151,19 +143,16 @@ function logout(username, password)
 async function createUser(db, username, password) 
 {
     const sql = "INSERT INTO user (username, password) VALUES (?, ?) RETURNING id";
-
     try 
     {
         const stmt = db.prepare(sql);
         const row = stmt.get(username, password);
-
         const result = 
         {
             id: row.id,
             username: username,
             password: password
         };
-        
         return result;
     } 
     catch (err) 
@@ -174,23 +163,20 @@ async function createUser(db, username, password)
 
 const db = connect_db(config.database.path);
 
-// Manejadores
 async function login_handler(request, response)
 {
     if ( request.method == "POST" )
     {
-       let body = '';
+        let body = '';
         request.on('data', chunk => {
             body += chunk.toString();
         });
-
         request.on('end', async () => 
         {
             try 
             {
                 const input = JSON.parse(body);
                 const output = login(input.username, input.password);
-
                 response.writeHead(200, { 'Content-Type': 'application/json' });
                 response.end(JSON.stringify(output));
             } 
@@ -211,16 +197,32 @@ async function login_handler(request, response)
 
 async function register_handler(request, response)
 {
-    try 
+    if (request.method === "POST") 
     {
-        const output = await createUser(db, 'test', '123456789');
-        response.writeHead(200, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify(output));
+        let body = '';
+        request.on('data', chunk => {
+            body += chunk.toString();
+        });
+        request.on('end', async () => 
+        {
+            try 
+            {
+                const input = JSON.parse(body);
+                const output = await createUser(db, input.username, input.password);
+                response.writeHead(200, { 'Content-Type': 'application/json' });
+                response.end(JSON.stringify(output));
+            }
+            catch (err) 
+            {
+                response.writeHead(400, { 'Content-Type': 'application/json' });
+                response.end(JSON.stringify({ error: err.message }));
+            }
+        });
     }
-    catch (err)
+    else 
     {
-        response.writeHead(500, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ error: err.message }));
+        response.writeHead(405, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ error: 'Método no permitido. Usa POST.' }));
     }
 }
 
@@ -240,10 +242,9 @@ router.set('/sayHello', show_message_handler);
 
 async function request_dispatcher(request, response)
 {
-    
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type'); // Agregado para permitir JSON en las peticiones
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type'); 
 
     if (request.method === 'OPTIONS')
     {
@@ -251,7 +252,6 @@ async function request_dispatcher(request, response)
         response.end();
         return;
     }
-    // ------------------------------------------------------------------
 
     const url = new URL(request.url, 'http://' + config.server.ip);
     const path = url.pathname;
@@ -263,7 +263,6 @@ async function request_dispatcher(request, response)
         {
             const usuarioSimulado = 'admin';
             const esAutorizado = authorize(usuarioSimulado, path);
-
             if (!esAutorizado) 
             {
                 response.writeHead(403, { 'Content-Type': 'application/json' });
@@ -271,7 +270,6 @@ async function request_dispatcher(request, response)
                 return; 
             }
         }
-
         return await handler(request, response);
     }
     else

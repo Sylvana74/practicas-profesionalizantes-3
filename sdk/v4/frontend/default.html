@@ -6,11 +6,11 @@
     </head>
     <body>
         <h1>Registro de usuarios</h1>
-        <form action="http://localhost:8081/register" method="get">
+        <form id="regForm">
             <label>Usuario:</label>
-            <input name="username" required><br>
+            <input name="username" id="username" required><br>
             <label>Password:</label>
-            <input type="password" name="password" required><br>
+            <input type="password" name="password" id="password" required><br>
             <button type="submit">Crear usuario</button>
         </form>
 
@@ -23,7 +23,6 @@
     </body>
 
     <script>
-   
     const API_URL = 'http://localhost:8080';
     
     function onBtnMsgOnClick()
@@ -46,16 +45,40 @@
             .then(res => alert(`Status /sayHello: ${res.status}`));
     }
 
-    // Una única función main que vincula TODOS los botones de la pantalla
+    function onFormSubmit(event) 
+    {
+        event.preventDefault();
+        
+        const usernameVal = document.getElementById('username').value;
+        const passwordVal = document.getElementById('password').value;
+
+        fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: usernameVal,
+                password: passwordVal
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(`Usuario creado exitosamente: ID ${data.id}`);
+        })
+        .catch(err => {
+            alert(`Error al registrar usuario: ${err.message}`);
+        });
+    }
+
     function main()
     {
-        // Vinculación por ID (Uso de getElementById para asegurar compatibilidad)
         document.getElementById('btnMsg').onclick = onBtnMsgOnClick;       
         document.getElementById('btnLog').onclick = onBtnLogOnClick;
         document.getElementById('btnSayHello').onclick = onBtnSayHelloOnClick;
+        document.getElementById('regForm').onsubmit = onFormSubmit;
     }
 
-    // Al terminar de cargar la ventana, se ejecuta el main
     window.onload = main;
     </script>
 </html>
