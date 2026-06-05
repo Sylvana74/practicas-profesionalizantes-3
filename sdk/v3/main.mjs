@@ -3,9 +3,9 @@ import { URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
-import crypto from 'node:crypto'; // Importamos el módulo nativo
+import crypto from 'node:crypto'; 
 
-// Solución al error de #translate: Vinculamos crypto al ámbito global para que crypto.subtle funcione en ESM
+
 if (!globalThis.crypto) {
     globalThis.crypto = crypto;
 }
@@ -62,12 +62,10 @@ function connect_db(path)
     }
 }
 
-// Inicialización de la base de datos
+
 const db = connect_db(config.database.path);
 
-// =================================================================
-// 1. ABSTRACCIÓN DE ENDPOINTS EXCEPCUADOS (Feedback Luzuriaga)
-// =================================================================
+
 const PUBLIC_ENDPOINTS = new Set([
     '/',
     '/login',
@@ -81,24 +79,20 @@ function isPublicEndpoint(endpointPath) {
     return normalizedPath === '' ? PUBLIC_ENDPOINTS.has('/') : PUBLIC_ENDPOINTS.has(normalizedPath);
 }
 
-// =================================================================
-// 2. FUNCIONES HASH CRIPTOGRÁFICAS (Código del PDF, Pág 5)
-// =================================================================
+
 async function calcularHashSHA256(cadena) {
-    const encoder = new TextEncoder(); // [cite: 137]
-    const data = encoder.encode(cadena); // [cite: 138]
+    const encoder = new TextEncoder(); 
+    const data = encoder.encode(cadena); 
     
-    // Ahora crypto.subtle está seguro en el contexto global globalThis
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data); // [cite: 143]
-    const hashArray = Array.from(new Uint8Array(hashBuffer)); // [cite: 144]
-    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join(''); // [cite: 145]
     
-    return hashHex; // [cite: 142]
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data); 
+    const hashArray = Array.from(new Uint8Array(hashBuffer)); 
+    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join(''); 
+    
+    return hashHex; 
 }
 
-// =================================================================
-// GESTIÓN DE SESIONES Y AUTORIZACIÓN
-// =================================================================
+
 let userSessions = new Map();  
 
 class UserSession
@@ -195,9 +189,7 @@ async function logout(username, password)
     }
 }
 
-// =================================================================
-// 3. INICIALIZACIÓN DEL SERVIDOR HTTP
-// =================================================================
+
 const server = createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${config.server.ip}:${config.server.port}`);
     const endpointPath = parsedUrl.pathname;

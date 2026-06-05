@@ -46,18 +46,18 @@
 			.then(res => alert(`Status /sayHello: ${res.status}`));
 	}
 
-	// 3. Una única función main que vincula TODOS los botones de la pantalla
+	
 	function main()
 	{
-		// Vinculación original por ID directo
+		
 		btnMsg.onclick = onBtnMsgOnClick;       
 		
-		// Vinculaciones de los nuevos botones
+		
 		document.getElementById('btnLog').onclick = onBtnLogOnClick;
 		document.getElementById('btnSayHello').onclick = onBtnSayHelloOnClick;
 	}
 
-	// Al terminar de cargar la ventana, se ejecuta el main
+	
 	window.onload = main;
 	
 	</script>
