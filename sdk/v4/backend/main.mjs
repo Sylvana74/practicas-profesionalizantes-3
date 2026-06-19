@@ -6,16 +6,13 @@ import { resolve } from 'node:path';
 
 function default_config() 
 {
-    const config = 
-    {
-        server: 
-        {
+    const config = {
+        server: {
             ip: '127.0.0.1',
             port: 8080, 
             default_path: './index.html'
         },
-        database: 
-        {
+        database: {
             path: './database.db'
         }
     };
@@ -25,14 +22,11 @@ function default_config()
 function load_config() 
 {
     let config = null;
-    try 
-    {
+    try {
         const data = readFileSync('./config.json', 'utf-8');
         config = JSON.parse(data);
         console.log("Configuración cargada correctamente.");
-    } 
-    catch (error) 
-    {
+    } catch (error) {
         console.error("Error cargando config.json. Usando valores por defecto.");
         config = default_config();
     }
@@ -44,13 +38,10 @@ const config = load_config();
 function connect_db(path) 
 {
     const dbPath = resolve(path);
-    try 
-    {
+    try {
         const db = new DatabaseSync(dbPath);
         return db;
-    } 
-    catch (err) 
-    {
+    } catch (err) {
         throw new Error("Error al conectar a la base de datos: " + err.message);
     }
 }
@@ -59,8 +50,7 @@ let userSessions = new Map();
 
 class UserSession
 {
-    constructor()
-    {
+    constructor() {
        this.status = 'disabled';
     }
 }
@@ -68,14 +58,11 @@ class UserSession
 function authenticate( username, password )
 {
     const sql = "SELECT count(*) as total FROM `user` WHERE username=? AND password=?";
-    try 
-    {
+    try {
         const stmt = db.prepare(sql);
         const row = stmt.get(username, password);
         return (row.total === 1);
-    } 
-    catch (err) 
-    {
+    } catch (err) {
         throw err;
     }
 }
@@ -104,28 +91,21 @@ function authorize( username, endpointPath )
 function login( username, password )
 {
     let isAuthenticated = authenticate(username, password);
-    if ( isAuthenticated )
-    {
+    if ( isAuthenticated ) {
         let havePreviousSession = userSessions.get(username);
-        if ( havePreviousSession != null )
-        {
+        if ( havePreviousSession != null ) {
             let newSession = new UserSession();
             newSession.status = 'enabled';
             userSessions.set(username, newSession );
             return newSession;
-        }
-        else
-        {
+        } else {
             let previusSession = userSessions.get(username);
-            if ( previusSession.status == 'disabled')
-            {
+            if ( previusSession.status == 'disabled') {
                 previusSession.status = 'enabled';
             }
             return previusSession;
         }
-    }
-    else
-    {
+    } else {
         return null;
     }
 }
@@ -133,8 +113,7 @@ function login( username, password )
 function logout(username, password)
 {
     let isAuthenticated = authenticate(username, password);
-    if ( isAuthenticated )
-    {
+    if ( isAuthenticated ) {
         let currentSession = userSessions.get(username);
         currentSession.status = 'disabled';
     }
@@ -143,20 +122,16 @@ function logout(username, password)
 async function createUser(db, username, password) 
 {
     const sql = "INSERT INTO user (username, password) VALUES (?, ?) RETURNING id";
-    try 
-    {
+    try {
         const stmt = db.prepare(sql);
         const row = stmt.get(username, password);
-        const result = 
-        {
+        const result = {
             id: row.id,
             username: username,
             password: password
         };
         return result;
-    } 
-    catch (err) 
-    {
+    } catch (err) {
         throw err;
     }
 }
@@ -165,65 +140,47 @@ const db = connect_db(config.database.path);
 
 async function login_handler(request, response)
 {
-    if ( request.method == "POST" )
-    {
+    if ( request.method == "POST" ) {
         let body = '';
         request.on('data', chunk => {
             body += chunk.toString();
         });
-        request.on('end', async () => 
-        {
-            try 
-            {
+        request.on('end', async () => {
+            try {
                 const input = JSON.parse(body);
                 const output = login(input.username, input.password);
+                if (output === null) {
+                    return  sendErrorResponse(response, 422, 'InvalidCredentials',['El usuario o la contraseña son incorrectos'])
+                }
                 response.writeHead(200, { 'Content-Type': 'application/json' });
-                response.end(JSON.stringify(output));
-            } 
-            catch (err) 
-            {
-                response.writeHead(400, { 'Content-Type': 'application/json' });
-                response.end(JSON.stringify({ error: 'Formato JSON inválido' }));
+                response.end(JSON.stringify(output));  
+            } catch (err) {
+               sendErrorResponse(response, 400, 'InvalidJson', ['El cuerpo de la peticion no tiene un formato JSON válido']);
             }
         });
-    }
-    else
-    {
-        response.writeHead(405, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ error: 'Método no permitido. Usa POST.' }));
-        return;
-    }
-}
+   
+ }
 
 async function register_handler(request, response)
 {
-    if (request.method === "POST") 
-    {
+    
         let body = '';
         request.on('data', chunk => {
             body += chunk.toString();
         });
-        request.on('end', async () => 
-        {
-            try 
-            {
+        request.on('end', async () => {
+            try {
                 const input = JSON.parse(body);
+                if (!input.username || !input.password) {
+                    return sendErrorResponse(response, 400, 'MissingParameters', ['Los campos username y password']);
+                }
                 const output = await createUser(db, input.username, input.password);
                 response.writeHead(200, { 'Content-Type': 'application/json' });
                 response.end(JSON.stringify(output));
+            } catch (err) {
+                sendErrorResponse(response, 422, 'DomainDatabaseError', [err.message]); 
             }
-            catch (err) 
-            {
-                response.writeHead(400, { 'Content-Type': 'application/json' });
-                response.end(JSON.stringify({ error: err.message }));
-            }
-        });
-    }
-    else 
-    {
-        response.writeHead(405, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ error: 'Método no permitido. Usa POST.' }));
-    }
+        });    
 }
 
 function show_message_handler(request, response)
@@ -244,10 +201,9 @@ async function request_dispatcher(request, response)
 {
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type'); 
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-ID, X-API-Key'); 
 
-    if (request.method === 'OPTIONS')
-    {
+    if (request.method === 'OPTIONS') {
         response.writeHead(204);
         response.end();
         return;
@@ -257,23 +213,26 @@ async function request_dispatcher(request, response)
     const path = url.pathname;
     const handler = router.get(path);
 
-    if (handler)
-    {
-        if (path === '/log' || path === '/sayHello') 
-        {
-            const usuarioSimulado = 'admin';
-            const esAutorizado = authorize(usuarioSimulado, path);
-            if (!esAutorizado) 
-            {
+    if (handler) {
+        if (path === '/log' || path === '/sayHello') {
+            const usuarioDesdeHeader = request.headers['x-user-id']; 
+            const apiKeyDesdeHeader = request.headers['x-api-key'];
+
+            if (!usuarioDesdeHeader || !apiKeyDesdeHeader) {
+                response.writeHead(401, { 'Content-Type': 'application/json' });
+                response.end(JSON.stringify({ error: 'Faltan cabeceras de autenticación (X-User-ID / X-API-Key)' }));
+                return;
+            }
+
+            const esAutorizado = authorize(usuarioDesdeHeader, path);
+            if (!esAutorizado) {
                 response.writeHead(403, { 'Content-Type': 'application/json' });
-                response.end(JSON.stringify({ error: `Acceso Denegado a el endpoint: ${path}` }));
+                response.end(JSON.stringify({ error: `Acceso Denegado al endpoint: ${path} para el usuario ${usuarioDesdeHeader}` }));
                 return; 
             }
         }
         return await handler(request, response);
-    }
-    else
-    {
+    } else {
         response.writeHead(404, { 'Content-Type': 'application/json' });
         response.end(JSON.stringify({ error: 'Método o endpoint no encontrado' }));
     }
