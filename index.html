@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Permisos V2</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .seccion { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9;}
+        .console { background: #000; color: #0f0; padding: 10px; height: 150px; overflow-y: auto; font-family: monospace; margin-top: 20px;}
+    </style>
+</head>
+<body>
+
+    <h2>Panel del Sistema V2</h2>
+
+    <!-- SECCIÓN DE LOGIN NUEVA -->
+    <div class="seccion">
+        <h3>Login (Autenticación)</h3>
+        <input type="text" id="username" placeholder="Usuario">
+        <input type="password" id="password" placeholder="Clave">
+        <button onclick="iniciarSesion()">Ingresar</button>
+    </div>
+
+    <!-- SECCIÓN DE PERMISOS -->
+    <div class="seccion">
+        <h3>Gestión de Permisos (ABM)</h3>
+        <input type="number" id="id_grupo" placeholder="ID Grupo">
+        <input type="number" id="id_endpoint" placeholder="ID Endpoint">
+        <button onclick="gestionarPermiso('asignar')">Asignar Permiso (Alta)</button>
+        <button onclick="gestionarPermiso('revocar')">Revocar Permiso (Baja)</button>
+    </div>
+
+    <div class="console" id="log-output">Consola del sistema...<br></div>
+
+    <script>
+        
+        function log(msg) {
+            const consola = document.getElementById('log-output');
+            const mensaje = document.createElement('div');
+            mensaje.textContent = '> ' + msg; 
+            consola.appendChild(mensaje);
+            consola.scrollTop = consola.scrollHeight;
+        }
+
+        // --- LÓGICA DE LOGIN ---
+        async function iniciarSesion() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            try {
+                const respuesta = await fetch('http://localhost:3000/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ username: user, password: pass })
+                });
+                const data = await respuesta.json();
+                log(data.message);
+            } catch (err) {
+                log("Error en login: " + err.message);
+            }
+        }
+
+        // --- LÓGICA DE PERMISOS ---
+        async function gestionarPermiso(accion) {
+            const g = document.getElementById('id_grupo').value;
+            const e = document.getElementById('id_endpoint').value;
+
+            try {
+                const respuesta = await fetch('http://localhost:3000/permisos/' + accion, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ id_group: g, id_endpoint: e })
+                });
+                const data = await respuesta.json();
+                log(data.message);
+            } catch (err) {
+                log("Error al procesar: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
