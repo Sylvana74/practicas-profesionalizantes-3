@@ -4,6 +4,6 @@
         "port": 8080
     },
     "database": {
-        "path": "./db.sqlite3"
+        "path": "./database.db"
     }
 }

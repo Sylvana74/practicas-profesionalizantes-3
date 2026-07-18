@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Frontend - V5</title>
+        <script type="module" src="./WCLoginFormView.js"></script>
+        <script type="module" src="./WCRegisterFormView.js"></script>
+    </head>
+    <body>
+        
+        <wc-register-form-view></wc-register-form-view>
+
+        <hr>
+
+        <wc-login-form-view></wc-login-form-view>
+
+        <hr>
+
+        <h3>Pruebas de Autorización (RPC - POST)</h3>
+        <p>Usuario activo: <span id="active-user">-</span></p>
+        <button id="btnLog">Ejecutar /log</button>
+        <button id="btnSayHello">Ejecutar /sayHello</button>
+        <p id="authorize-result"></p>
+    </body>
+
+    <script>
+    const API_URL = 'http://localhost:8080';
+    window.appState = { username: null, token: null };
+
+   async function RPCWebAPIFetch(endpoint, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window.appState.token) headers['Authorization'] = 'Bearer ' + window.appState.token;
+
+    const res = await fetch(API_URL + endpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+    
+    // Aquí implementamos el manejo de errores según la especificación v4:
+    if (res.status === 200) return data;
+
+    const detail = data.detail ? data.detail.join(', ') : 'Error desconocido';
+    
+    // Diferenciamos los errores según el código HTTP
+    if (res.status === 400) throw new Error('ValidationError: ' + detail);
+    if (res.status === 401) throw new Error('AuthError: ' + detail);
+    if (res.status === 422) throw new Error('DomainDatabaseError: ' + detail);
+    if (res.status === 500) throw new Error('InternalServerError: ' + detail);
+    
+    throw new Error('Error ' + res.status + ': ' + detail);
+}
+    document.addEventListener('request', async function(e) {
+        if (e.detail.action === 'login') {
+            const username = e.detail.username;
+            const password = await calcularHashSHA256(e.detail.password);
+
+            RPCWebAPIFetch('/login', { username, password })
+            .then(function(data) {
+                window.appState.token = data.token;
+                document.getElementById('active-user').innerText = username;
+                alert('Login exitoso');
+            })
+            .catch(function(err) { alert(err.message); });
+        }
+    });
+
+    // ── Autorizador ───────────────────────────────────────────────────────────
+    function onBtnLogOnClick() {
+    RPCWebAPIFetch('/log', {}) 
+    .then(data => document.getElementById('authorize-result').innerText = data.message)
+    .catch(err => document.getElementById('authorize-result').innerText = 'Error: ' + err.message);
+}
+
+function onBtnSayHelloOnClick() {
+    RPCWebAPIFetch('/sayhello', {}) 
+    .then(data => document.getElementById('authorize-result').innerText = data.message)
+    .catch(err => document.getElementById('authorize-result').innerText = 'Error: ' + err.message);
+}
+
+    function main() {
+        document.getElementById('btnLog').onclick = onBtnLogOnClick;
+        document.getElementById('btnSayHello').onclick = onBtnSayHelloOnClick;
+    }
+
+    window.onload = main;
+</script>
+</html>

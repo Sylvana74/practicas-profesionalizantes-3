@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Frontend Estático - V4 Desacoplada</title>
+    </head>
+    <body>
+        <h1>Registro de usuarios</h1>
+        <form id="regForm">
+            <label>Usuario:</label>
+            <input name="username" id="reg-username" required><br>
+            <label>Password:</label>
+            <input type="password" name="password" id="reg-password" required><br>
+            <button type="submit">Crear usuario</button>
+        </form>
+
+        <hr>
+
+        <h1>Iniciar sesión</h1>
+        <form id="loginForm">
+            <label>Usuario:</label>
+            <input id="login-username" required><br>
+            <label>Password:</label>
+            <input type="password" id="login-password" required><br>
+            <button type="submit">Ingresar</button>
+        </form>
+        <p id="login-result"></p>
+
+        <hr>
+
+        <h3>Pruebas de Autorización (RPC - POST)</h3>
+        <p>Usuario activo: <span id="active-user">-</span></p>
+        <button id="btnLog">Ejecutar /log</button>
+        <button id="btnSayHello">Ejecutar /sayHello</button>
+        <p id="authorize-result"></p>
+    </body>
+
+    <script>
+
+    const API_URL = 'http://localhost:8080';
+
+    
+    let userId = null;
+    let key    = null;
+
+    
+    // La contraseña nunca llega al servidor en texto plano
+    async function calcularHashSHA256(cadena)
+    {
+        const encoder    = new TextEncoder();
+        const data       = encoder.encode(cadena);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray  = Array.from(new Uint8Array(hashBuffer));
+        const hashHex    = hashArray.map(function(byte) { return byte.toString(16).padStart(2, '0'); }).join('');
+        return hashHex;
+    }
+
+    
+    function getRpcApiHeaders()
+    {
+        return {
+            'Content-Type': 'application/json',
+            'x-user-id':    userId,
+            'x-api-key':    key
+        };
+    }
+
+    
+    async function RPCWebAPIFetch(name, content)
+    {
+        const req = await fetch(API_URL + '/' + name,
+        {
+            method:  'POST',
+            headers: getRpcApiHeaders(),
+            body:    JSON.stringify(content)
+        });
+
+        if (req.status === 200)
+        {
+            return await req.json();
+        }
+
+        // Si no es 200, leemos el error y lo mostramos
+        const errData = await req.json();
+        throw new Error('[' + req.status + '] ' + errData.exception + ': ' + errData.detail.join(', '));
+    }
+
+    // ── Registro ─────────────────────────────────────────────────────────────
+
+    function onFormRegisterSubmit(event)
+    {
+        event.preventDefault();
+
+        
+        const username = document.getElementById('reg-username').value;
+        const password = document.getElementById('reg-password').value;
+
+        // Hasheamos antes de enviar y guardamos en memoria
+        calcularHashSHA256(password).then(function(hash)
+        {
+            userId = username;
+            key    = hash;
+
+            RPCWebAPIFetch('register', {})
+            .then(function(data)
+            {
+                alert('Usuario creado exitosamente: ID ' + data.id);
+            })
+            .catch(function(err)
+            {
+                alert('Error al registrar usuario: ' + err.message);
+            });
+        });
+    }
+
+    // ── Login ─────────────────────────────────────────────────────────────────
+
+    
+    function onFormLoginSubmit(event)
+    {
+        event.preventDefault();
+
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+
+        calcularHashSHA256(password).then(function(hash)
+        {
+            userId = username;
+            key    = hash;
+
+            RPCWebAPIFetch('login', {})
+            .then(function(data)
+            {
+                if (data.session && data.session.status === 'enabled')
+                {
+                    document.getElementById('active-user').innerText  = username;
+                    document.getElementById('login-result').innerText = 'Sesión iniciada: ' + username;
+                }
+            })
+            .catch(function(err)
+            {
+                document.getElementById('login-result').innerText = 'Error: ' + err.message;
+            });
+        });
+    }
+
+    // ── Autorizador ───────────────────────────────────────────────────────────
+
+    
+    function onBtnLogOnClick()
+    {
+        RPCWebAPIFetch('log', {})
+        .then(function(data)
+        {
+            document.getElementById('authorize-result').innerText = userId + ' tiene permiso sobre /log';
+        })
+        .catch(function(err)
+        {
+            document.getElementById('authorize-result').innerText = 'Error: ' + err.message;
+        });
+    }
+
+    function onBtnSayHelloOnClick()
+    {
+        RPCWebAPIFetch('sayHello', {})
+        .then(function(data)
+        {
+            document.getElementById('authorize-result').innerText = userId + ' tiene permiso sobre /sayHello';
+        })
+        .catch(function(err)
+        {
+            document.getElementById('authorize-result').innerText = 'Error: ' + err.message;
+        });
+    }
+
+    function main()
+    {
+        document.getElementById('btnLog').onclick          = onBtnLogOnClick;
+        document.getElementById('btnSayHello').onclick     = onBtnSayHelloOnClick;
+        document.getElementById('regForm').onsubmit        = onFormRegisterSubmit;
+        document.getElementById('loginForm').onsubmit     = onFormLoginSubmit;
+    }
+
+    window.onload = main;
+
+    </script>
+</html>

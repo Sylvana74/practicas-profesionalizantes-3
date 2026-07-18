@@ -1,55 +1,56 @@
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
-import * as handlers from './handlers.mjs';
+import { readFile } from 'node:fs/promises';
+import { manejarGrupos } from './src/grupos.js'; 
+import { manejarAuth } from './src/auth.js';
+import { manejarPermisos } from './src/permisos.js';
+import { borrarGrupo } from './src/model.js';
 
 
-function loadConfig() {
-    return JSON.parse(readFileSync('./config.json', 'utf-8'));
-}
-const config = loadConfig();
+async function serverHandler(request, response) {
+    // Configuración CORS
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-
-const router = new Map();
-
-router.set('/list', handlers.listarUsuariosHandler);
-router.set('/', handlers.defaultHandler);
-router.set('/register', handlers.registerHandler);
-router.set('/login', handlers.loginHandler);
-router.set('/showMessage', handlers.showMessageHandler);
-router.set('/delete', handlers.deleteHandler);
-
-
-router.set('/group/create', handlers.groupCreateHandler);
-router.set('/group/delete', handlers.groupDeleteHandler);
-router.set('/group/update', handlers.groupUpdateHandler);
-
-
-router.set('/member/create', handlers.memberCreateHandler);
-router.set('/member/delete', handlers.memberDeleteHandler);
-
-
-router.set('/endpoint/create', handlers.endpointCreateHandler);
-router.set('/endpoint/delete', handlers.endpointDeleteHandler);
-router.set('/endpoint/update', handlers.endpointUpdateHandler);
-
-
-async function requestDispatcher(request, response) {
-    const url = new URL(request.url, `http://${config.server.ip}`);
-    const handler = router.get(url.pathname);
-
-    if (handler) {
-        
-        await handler(request, response);
-    } else {
-        response.writeHead(404, { 'Content-Type': 'text/plain' });
-        response.end('Not Found');
+    // Manejo de preflight para CORS
+    if (request.method === 'OPTIONS') {
+        response.writeHead(204);
+        response.end();
+        return;
     }
+
+    // Único HTML permitido (Interfaz gráfica unificada)
+    if (request.url === '/' || request.url === '/index.html') {
+        try {
+            const html = await readFile('./index.html');
+            response.writeHead(200, { 'Content-Type': 'text/html' });
+            response.end(html);
+        } catch (err) {
+            response.writeHead(500);
+            response.end("Error al leer index.html");
+        }
+        return;
+    }
+
+    // --- DELEGACIÓN A MÓDULOS DE SRC (Enrutador) ---
+    
+    if (request.url.startsWith('/grupos')) {
+        return manejarGrupos(request, response);
+    }
+    if (request.url.startsWith('/auth')) {
+        return manejarAuth(request, response);
+    }
+    if (request.url.startsWith('/permisos')) {
+        return manejarPermisos(request, response);
+    }
+
+    // Respuesta por defecto si no encuentra la ruta
+    response.writeHead(404);
+    response.end("Ruta no encontrada");
 }
 
-// 5. ENCENDEMOS EL SERVIDOR
-const server = createServer(requestDispatcher);
-server.listen(config.server.port, config.server.ip, () => {
-    console.log("--------------------------------------------------");
-    console.log(`Servidor v2 listo en http://${config.server.ip}:${config.server.port}`);
-    console.log("--------------------------------------------------");
+const server = createServer(serverHandler);
+
+server.listen(3000, '127.0.0.1', function() {
+    console.log('Servidor V2 corriendo en puerto 3000 con todos los ABM integrados');
 });
